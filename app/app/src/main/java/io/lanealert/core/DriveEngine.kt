@@ -82,12 +82,25 @@ object IncidentMatcher {
         return 2 * r * asin(sqrt(h))
     }
 
-    /** 가장 가까운 공공 기록과 확신(0-1). [MAX_MATCH_M] 밖이면 null */
-    fun match(lat: Double, lon: Double, incidents: List<Incident>): Pair<Incident, Double>? {
-        val best = incidents.filter { it.lat != null && it.lon != null }
+    /** 내비 사건 종류와 공공 기록 종류가 서로 맞는가 (모르면 맞는 것으로 봄) */
+    fun typeCompatible(naviType: String?, inc: Incident): Boolean = when (naviType) {
+        "ACCIDENT" -> inc.kind in setOf(Incident.Kind.ACCIDENT, Incident.Kind.BREAKDOWN, Incident.Kind.OBSTACLE)
+        "REPAIRING", "ROAD_DAMAGE" -> inc.kind == Incident.Kind.WORK
+        "DISASTER" -> inc.kind in setOf(Incident.Kind.DISASTER, Incident.Kind.WEATHER)
+        else -> true
+    }
+
+    /**
+     * 가장 가까운 공공 기록과 확신(0-1). [MAX_MATCH_M] 밖이거나, 종류가 안 맞거나,
+     * 반경 안에 통제 차로가 서로 다른 기록이 둘 이상이면(반대 방향·진입로 등 모호) null → 차로를 말하지 않는다.
+     */
+    fun match(lat: Double, lon: Double, incidents: List<Incident>, naviType: String? = null): Pair<Incident, Double>? {
+        val near = incidents.filter { it.lat != null && it.lon != null && typeCompatible(naviType, it) }
             .map { it to distanceM(lat, lon, it.lat!!, it.lon!!) }
-            .minByOrNull { it.second } ?: return null
-        if (best.second > MAX_MATCH_M) return null
+            .filter { it.second <= MAX_MATCH_M }
+        if (near.isEmpty()) return null
+        if (near.map { it.first.lanes to it.first.scope }.distinct().size > 1) return null
+        val best = near.minBy { it.second }
         return best.first to (1.0 - best.second / MAX_MATCH_M * 0.5)
     }
 }

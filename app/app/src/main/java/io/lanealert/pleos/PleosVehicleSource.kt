@@ -42,7 +42,7 @@ class PleosVehicleSource(private val context: Context) {
             _signals.value = _signals.value.copy(cruise = Cruise.fromPleosName(state?.name), vehicleStatus = "Vehicle SDK 수신 중")
         }
         override fun onFailed(e: Exception) {
-            _signals.value = _signals.value.copy(vehicleStatus = "크루즈 수신 실패: ${e.javaClass.simpleName}")
+            _signals.value = _signals.value.copy(cruise = null, cruiseTargetKmh = null, vehicleStatus = "크루즈 수신 실패: ${e.javaClass.simpleName}")
         }
     }
     private val targetListener = object : CruiseControlTargetSpeedListener {
@@ -57,7 +57,7 @@ class PleosVehicleSource(private val context: Context) {
             _signals.value = _signals.value.copy(speedMps = mps, speedStatus = "PERF_VEHICLE_SPEED 수신 중")
         }
         override fun onErrorEvent(propId: Int, zone: Int) {
-            _signals.value = _signals.value.copy(speedStatus = "차속 수신 오류")
+            _signals.value = _signals.value.copy(speedMps = null, speedStatus = "차속 수신 오류")
         }
     }
 

@@ -154,7 +154,6 @@ class DriveViewModel(app: Application) : AndroidViewModel(app) {
                     lastStepS = s.tS
                     engine.step(s.tS, s.vehicle(), s.ahead(observedAgeS = 60.0 + s.tS)).forEach { u ->
                         val kind = if (u.content == "tail") CardKind.TAIL else CardKind.EVENT
-                        if (kind == CardKind.EVENT && _ui.value.announcedAtM == null) _ui.value = _ui.value.copy(announcedAtM = s.distanceM)
                         enqueue(u, Card(kind, u.text))
                     }
                 }
@@ -185,7 +184,7 @@ class DriveViewModel(app: Application) : AndroidViewModel(app) {
 
     /** 차량 신호 사용: 크루즈 상태·설정 속도(Pleos Vehicle SDK)와 차속(PERF_VEHICLE_SPEED)을 재생 차량에 넣는다 */
     private fun applyCarSignals(s: ReplaySim) {
-        if (!_ui.value.useCarSignals) return
+        if (!_ui.value.useCarSignals) { s.carSpeedMps = null; return }
         val sig = vehicle.signals.value
         sig.cruise?.let { s.cruise = it }
         sig.cruiseTargetKmh?.let { s.cruiseTargetKmh = it }
@@ -234,6 +233,8 @@ class DriveViewModel(app: Application) : AndroidViewModel(app) {
         _ui.value = _ui.value.copy(card = card)
         speaker.speak(card.text) { ok ->
             if (ok && u != null) engine.announcer.confirm(u)
+            // '말함' 표시는 TTS 가 실제로 말을 끝낸 뒤에만
+            if (ok && card.kind == CardKind.EVENT && _ui.value.announcedAtM == null) _ui.value = _ui.value.copy(announcedAtM = _ui.value.distanceM)
             busy = false
             viewModelScope.launch {
                 delay(2500)
@@ -279,6 +280,7 @@ class DriveViewModel(app: Application) : AndroidViewModel(app) {
             incident = st.incident, distanceM = st.distanceM, recordLabel = st.recordLabel,
             cruise = st.cruise, cruiseTargetKmh = st.cruiseTargetKmh, cruiseSource = st.cruiseSource,
             relation = st.relation, recordFresh = fresh,
+            recordActive = st.incident?.endAt?.isAfter(LocalDateTime.now()) ?: true,
         )
         val a = QaEngine.answer(question, qctx)
         _ui.value = _ui.value.copy(qaOpen = true, qa = (st.qa + QA(question, a.text, a.basis)).takeLast(4))

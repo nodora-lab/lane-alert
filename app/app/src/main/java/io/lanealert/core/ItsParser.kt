@@ -27,12 +27,15 @@ object ItsParser {
 
         // 괄호가 여럿이면("송추(50K)-노고산터널(56K)(3,4차로)") 차로·갓길·진입로를 말하는 괄호를 쓴다
         val parens = PAREN.findAll(message).map { it.groupValues[1] }.toList()
-        val head = parens.firstOrNull { p -> listOf("차로", "갓길", "진입로", "진출로").any { it in p } }
-            ?: parens.firstOrNull().orEmpty()
-        val msgLanes = lanesIn(head)
+        val head = parens.filter { p -> listOf("차로", "갓길", "진입로", "진출로").any { it in p } }.joinToString(",")
+            .ifEmpty { parens.firstOrNull().orEmpty() }
+        // "(1차로 해제)"처럼 해제·개방이 섞이면 어느 차로가 막혔는지 단정하지 않는다
+        val released = listOf("해제", "개방", "소통 재개").any { it in message }
+        val msgLanes = if (released) emptyList() else lanesIn(head)
         val fieldLanes = lanesIn(lanesRaw)
 
         val scope = when {
+            released -> Incident.LaneScope.NONE
             "진입로" in head -> Incident.LaneScope.RAMP_ENTRY
             "진출로" in head -> Incident.LaneScope.RAMP_EXIT
             msgLanes.isNotEmpty() -> Incident.LaneScope.MAINLINE
@@ -41,6 +44,7 @@ object ItsParser {
             else -> Incident.LaneScope.NONE
         }
         val lanes = when {
+            released -> emptyList()
             msgLanes.isNotEmpty() -> msgLanes
             scope == Incident.LaneScope.SHOULDER -> emptyList()
             else -> fieldLanes

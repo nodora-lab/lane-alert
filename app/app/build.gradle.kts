@@ -11,7 +11,8 @@ val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
 }
-val itsKey: String = localProps.getProperty("its.apiKey", "")
+// 공개 저장소에 올리는 APK는 -PnoItsKey 로 키 없이 빌드한다
+val itsKey: String = if (project.hasProperty("noItsKey")) "" else localProps.getProperty("its.apiKey", "")
 
 android {
     namespace = "io.lanealert"

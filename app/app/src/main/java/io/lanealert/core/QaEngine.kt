@@ -25,6 +25,8 @@ object QaEngine {
         val relation: Relation = Relation.AHEAD,
         /** 받은 지 오래된 기록이면 false → 통제 차로를 지금 사실처럼 말하지 않는다 */
         val recordFresh: Boolean = true,
+        /** 기록상 끝난 사건이면 false */
+        val recordActive: Boolean = true,
     )
 
     data class Answer(val intent: Intent, val text: String, val basis: String)
@@ -51,12 +53,19 @@ object QaEngine {
         Relation.NEARBY -> "주변 기록상"
     }
 
-    private fun lanesFact(inc: Incident): String? =
-        if (inc.hasMainlineLanes) "${KoText.lanes(inc.lanes)} 통제" else null
+    private var gate: Context? = null
+
+    /** 통제 차로를 지금 사실로 말해도 되는가: 신선하고, 끝나지 않은 기록일 때만 (모든 질문에 같은 검사) */
+    private fun lanesFact(inc: Incident): String? {
+        val c = gate
+        if (c != null && (!c.recordFresh || !c.recordActive)) return null
+        return if (inc.hasMainlineLanes) "${KoText.lanes(inc.lanes)} 통제" else null
+    }
 
     fun answer(question: String, ctx: Context): Answer = answer(classify(question), ctx)
 
     fun answer(intent: Intent, ctx: Context): Answer {
+        gate = ctx
         val inc = ctx.incident
         val nearbyTail = if (ctx.relation == Relation.NEARBY) " 내 경로 앞인지는 확인 전이에요." else ""
         val text: String = when (intent) {
@@ -69,7 +78,8 @@ object QaEngine {
             }
             else -> if (inc == null) "지금 확인된 돌발 기록은 없어요." else when (intent) {
                 Intent.LANES ->
-                    if (!ctx.recordFresh) "받은 지 오래된 기록이라 지금도 통제 중인지는 확인이 필요해요."
+                    if (!ctx.recordActive) "기록상 이미 끝난 사건이에요."
+                    else if (!ctx.recordFresh) "받은 지 오래된 기록이라 지금도 통제 중인지는 확인이 필요해요."
                     else laneAnswer(inc, ctx) + nearbyTail
                 Intent.WHY -> whyAnswer(inc, ctx) + nearbyTail
                 Intent.DISTANCE -> when {

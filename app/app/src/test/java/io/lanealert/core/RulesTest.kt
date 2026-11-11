@@ -80,6 +80,7 @@ class RulesTest {
         assertEquals("3km", KoText.km(3000.0))
         assertEquals("800m", KoText.km(800.0))
         assertEquals("3.3km", KoText.km(3333.0))
+        assertEquals("1km", KoText.km(990.0))
     }
 
     // ---------- 2부: 공공 돌발 기록 해석 (2026-11-12 실제 기록 문구) ----------
@@ -300,5 +301,33 @@ class RulesTest {
             emptyList(), listOf(ended), 60.0, now)!!
         assertFalse(a.active)
         assertTrue(DriveEngine().step(1.0, VehicleState(27.8, Cruise.ACTIVE, 100.0), a).isEmpty())
+    }
+    // ---------- 3라운드 추가 (GPT 2차 지적) ----------
+
+    @Test fun stale_or_ended_gate_applies_to_every_question() {
+        for (c in listOf(ctx(acc).copy(recordFresh = false), ctx(acc).copy(recordActive = false))) {
+            for (q in listOf("몇 차로야", "왜 막혀", "어느 차로가 빨라")) {
+                val t = QaEngine.answer(q, c).text
+                assertFalse("$q -> $t", "2차로 통제" in t)
+            }
+        }
+        assertEquals("기록상 이미 끝난 사건이에요.", QaEngine.answer("몇 차로야", ctx(acc).copy(recordActive = false)).text)
+    }
+
+    @Test fun release_wording_is_not_read_as_closure() {
+        val i = ItsParser.parse(rec("교통사고", "사고", "2차로 차단", "(1차로 해제)(2차로 통제) 사고 처리중"))
+        assertTrue(i.lanes.isEmpty())
+        assertFalse(i.hasMainlineLanes)
+        val g = ItsParser.parse(rec("공사", "작업", "3차로 차단", "(갓길)(3차로) 작업중"))
+        assertEquals(listOf(3), g.lanes)
+    }
+
+    @Test fun matcher_withholds_ambiguous_or_wrong_type() {
+        val a = ItsParser.parse(rec("기타돌발", "고장", "4차로 차단", "(4차로) 고장차 처리중"))
+        val b = ItsParser.parse(rec("기타돌발", "고장", "2차로 차단", "(2차로) 고장차 처리중"))
+        val work = ItsParser.parse(rec("공사", "작업", "1차로 차단", "(1차로) 노면보수 작업중"))
+        assertNull(IncidentMatcher.match(37.2, 127.0, listOf(a, b), "ACCIDENT"))      // 같은 자리, 다른 차로 → 모호
+        assertNull(IncidentMatcher.match(37.2, 127.0, listOf(work), "ACCIDENT"))      // 종류 안 맞음
+        assertEquals(listOf(4), IncidentMatcher.match(37.2, 127.0, listOf(a, work), "ACCIDENT")!!.first.lanes)
     }
 }

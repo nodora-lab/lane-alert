@@ -12,7 +12,8 @@ object KoText {
             val tenths = (m / 100).roundToInt()
             return if (tenths % 10 == 0) "${tenths / 10}km" else "${tenths / 10}.${tenths % 10}km"
         }
-        return "${((m / 100).roundToInt() * 100)}m"
+        val r = (m / 100).roundToInt() * 100
+        return if (r >= 1000) "1km" else "${r}m"
     }
 
     /** 받침에 따라 은/는 */

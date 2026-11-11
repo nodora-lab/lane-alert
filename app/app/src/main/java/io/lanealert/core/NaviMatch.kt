@@ -23,7 +23,7 @@ object NaviMatch {
     ): AheadState? {
         val nearest = events.minByOrNull { IncidentMatcher.distanceM(myLat, myLon, it.lat, it.lon) } ?: return null
         val dist = IncidentMatcher.distanceM(myLat, myLon, nearest.lat, nearest.lon)
-        val m = IncidentMatcher.match(nearest.lat, nearest.lon, incidents) ?: return null
+        val m = IncidentMatcher.match(nearest.lat, nearest.lon, incidents, nearest.type) ?: return null
         val inc = m.first
         val tail = congestions.filter { it.offsetM in 0.0..dist }.minByOrNull { it.offsetM }
         return AheadState(
