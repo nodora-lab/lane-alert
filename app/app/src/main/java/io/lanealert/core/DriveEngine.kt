@@ -25,6 +25,10 @@ data class AheadState(
     val congestionId: String?,
     val congestionOffsetM: Double?,
     val congestionAvgKmh: Double?,
+    /** 사건이 내 경로 앞이라는 확신. 재생 = 1.0, 내비 경로 사건과 맞춘 경우 = [NaviMatch.ROUTE_CONF] */
+    val routeConf: Double = 1.0,
+    /** 기록상 끝난 사건이면 false (종료 시각이 관측 시각보다 이르면) */
+    val active: Boolean = true,
 )
 
 /**
@@ -56,7 +60,7 @@ class DriveEngine(val announcer: Announcer = Announcer()) {
             val inc = a.incident
             val ev = Announcer.RouteEvent(
                 id = inc.id, type = inc.kind.name, offsetM = a.distanceM, ageS = a.observedAgeS,
-                routeConf = 1.0, active = true, name = inc.kindKo,
+                routeConf = a.routeConf, active = a.active, name = inc.kindKo,
             )
             val pub = Announcer.PublicLanes(inc.lanes, a.observedAgeS, a.matchConf, inc.scope)
             announcer.eventUtterance(a.routeId, ev, pub)?.let { out += it }

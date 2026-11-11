@@ -79,6 +79,7 @@ class RulesTest {
         assertEquals("1.5km", KoText.km(1500.0))
         assertEquals("3km", KoText.km(3000.0))
         assertEquals("800m", KoText.km(800.0))
+        assertEquals("3.3km", KoText.km(3333.0))
     }
 
     // ---------- 2부: 공공 돌발 기록 해석 (2026-11-12 실제 기록 문구) ----------
@@ -159,20 +160,20 @@ class RulesTest {
 
     // ---------- 묻고 답하기 ----------
 
-    private fun ctx(i: Incident?) = QaEngine.Context(i, 2000.0, 3, Cruise.ACTIVE, 100.0, 110)
+    private fun ctx(i: Incident?) = QaEngine.Context(i, 2000.0, "공공 돌발정보 11-12 00:42 기록", Cruise.ACTIVE, 100.0)
     private val acc = ItsParser.parse(rec("교통사고", "사고", "2차로 차단", "(2차로) 사고 처리중"))
 
     @Test fun qa_lanes_answer_uses_record() {
         val a = QaEngine.answer("몇 차로 막혔어?", ctx(acc))
         assertEquals(QaEngine.Intent.LANES, a.intent)
-        assertEquals("2km 앞 사고로 2차로가 통제됐어요.", a.text)
-        assertEquals("근거: 공공 돌발정보, 3분 전 받음", a.basis)
+        assertEquals("2km 앞 사고, 2차로 통제예요.", a.text)
+        assertEquals("근거: 공공 돌발정보 11-12 00:42 기록", a.basis)
     }
 
     @Test fun qa_refuses_fastest_lane_and_restates_fact() {
         val a = QaEngine.answer("어느 차로가 빨라?", ctx(acc))
         assertEquals(QaEngine.Intent.FASTEST_LANE, a.intent)
-        assertEquals("차로별 속도는 확인할 수 없어요. 확인된 건 2km 앞 사고로 2차로가 통제됐다는 기록이에요.", a.text)
+        assertEquals("차로별 속도는 확인할 수 없어요. 확인된 건 2km 앞 사고 기록, 2차로 통제예요.", a.text)
     }
 
     @Test fun qa_never_vouches_for_cruise() {
@@ -188,13 +189,13 @@ class RulesTest {
 
     @Test fun qa_ramp_and_no_incident() {
         val ramp = ItsParser.parse(rec("공사", "작업", "2차로 차단", "(진입로 2차로)노면보수 작업중"))
-        assertEquals("2km 앞 진입로 공사예요. 본선 차로 통제 기록은 없어요.", QaEngine.answer("몇 차로야", ctx(ramp)).text)
-        assertEquals("지금 경로 앞에 확인된 돌발 기록은 없어요.", QaEngine.answer("앞에 왜 막혀?", ctx(null)).text)
+        assertEquals("2km 앞 진입로 공사 기록이에요. 본선 차로 통제 기록은 없어요.", QaEngine.answer("몇 차로야", ctx(ramp)).text)
+        assertEquals("지금 확인된 돌발 기록은 없어요.", QaEngine.answer("앞에 왜 막혀?", ctx(null)).text)
     }
 
     @Test fun qa_why_uses_message_body() {
         val w = ItsParser.parse(rec("공사", "작업", "5차로 차단", "(4,5차로)노면 포장 작업 중"))
-        assertEquals("2km 앞 노면 포장 작업 중이에요. 4, 5차로가 통제됐어요.", QaEngine.answer("앞에 왜 막혀?", ctx(w)).text)
+        assertEquals("2km 앞, 노면 포장 작업 중이라는 기록이에요. 4, 5차로 통제예요.", QaEngine.answer("앞에 왜 막혀?", ctx(w)).text)
     }
 
     @Test fun every_answer_is_short_and_safe() {
@@ -240,5 +241,64 @@ class RulesTest {
         }
         assertTrue(said.toString(), said.any { "정체가 시작돼요" in it })
         assertEquals(1, said.count { "고장차" in it })   // 같은 사건은 한 번만
+    }
+    // ---------- 2라운드 추가 (GPT 1차 지적) ----------
+
+    @Test fun its_range_and_multiple_parentheses() {
+        assertEquals(listOf(2, 3, 4), ItsParser.lanesIn("2~4차로"))
+        val i = ItsParser.parse(rec("공사", "작업", "4차로 차단", "송추(50K)-노고산터널(56K)(3,4차로)시설물 보수 작업중"))
+        assertEquals(listOf(3, 4), i.lanes)
+        assertEquals(Incident.LaneScope.MAINLINE, i.scope)
+    }
+
+    @Test fun ramp_breakdown_is_not_called_construction() {
+        val i = ItsParser.parse(rec("기타돌발", "고장", "1차로 차단", "(진출로 1차로) 고장차 처리중"))
+        assertEquals("진출로 고장차", i.kindKo)
+        assertEquals("2km 앞 진출로 고장차 기록이에요. 본선 차로 통제 기록은 없어요.", QaEngine.answer("몇 차로야", ctx(i)).text)
+    }
+
+    @Test fun why_answer_repeats_record_wording_not_guess() {
+        val b = ItsParser.parse(rec("기타돌발", "고장", "4차로 차단", "(4차로) 고장차 발생"))
+        assertEquals("2km 앞, 고장차 발생이라는 기록이에요. 4차로 통제예요.", QaEngine.answer("왜 막혀", ctx(b)).text)
+    }
+
+    @Test fun stale_record_does_not_state_lanes_as_current() {
+        val t = QaEngine.answer("몇 차로야", ctx(acc).copy(recordFresh = false)).text
+        assertFalse(t, "2차로" in t)
+    }
+
+    @Test fun nearby_record_is_not_called_ahead() {
+        val c = ctx(acc).copy(relation = QaEngine.Relation.NEARBY)
+        val t = QaEngine.answer("몇 차로야", c).text
+        assertFalse(t, "앞" in t.substringBefore("."))
+        assertTrue(t, "확인 전" in t)
+        assertEquals("내 경로 위 거리는 아직 확인 전이에요.", QaEngine.answer("얼마나 남았어", c).text)
+    }
+
+    @Test fun cruise_basis_names_its_source() {
+        assertEquals("근거: 크루즈 신호(Pleos Vehicle SDK)",
+            QaEngine.answer("크루즈 켜져 있어?", ctx(acc).copy(cruiseSource = "Pleos Vehicle SDK")).basis)
+    }
+
+    @Test fun navi_route_event_gets_public_lanes_only_when_matched() {
+        val now = java.time.LocalDateTime.of(2026, 11, 12, 1, 0)
+        val inc = ItsParser.parse(rec("기타돌발", "고장", "4차로 차단", "(4차로) 고장차 처리중"))   // 37.2, 127.0
+        val me = 37.17 to 127.0                                                                  // 남쪽 약 3.3km
+        val hit = NaviMatch.aheadFromNavi(me.first, me.second, listOf(NaviMatch.NaviEvent("ACCIDENT", 37.2005, 127.0)),
+            emptyList(), listOf(inc), 60.0, now)!!
+        assertEquals(listOf(4), hit.incident.lanes)
+        assertTrue(hit.distanceM in 3200.0..3400.0)
+        assertNull(NaviMatch.aheadFromNavi(me.first, me.second, listOf(NaviMatch.NaviEvent("ACCIDENT", 37.25, 127.0)),
+            emptyList(), listOf(inc), 60.0, now))
+        assertNull(NaviMatch.aheadFromNavi(me.first, me.second, emptyList(), emptyList(), listOf(inc), 60.0, now))
+    }
+
+    @Test fun ended_record_is_not_announced() {
+        val now = java.time.LocalDateTime.of(2026, 11, 12, 1, 0)
+        val ended = ItsParser.parse(rec("기타돌발", "고장", "4차로 차단", "(4차로) 고장차 처리중", end = "20261112003000"))
+        val a = NaviMatch.aheadFromNavi(37.17, 127.0, listOf(NaviMatch.NaviEvent("ACCIDENT", 37.2, 127.0)),
+            emptyList(), listOf(ended), 60.0, now)!!
+        assertFalse(a.active)
+        assertTrue(DriveEngine().step(1.0, VehicleState(27.8, Cruise.ACTIVE, 100.0), a).isEmpty())
     }
 }

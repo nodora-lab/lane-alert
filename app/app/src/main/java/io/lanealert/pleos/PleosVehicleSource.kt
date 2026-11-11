@@ -38,6 +38,7 @@ class PleosVehicleSource(private val context: Context) {
 
     private val cruiseListener = object : CruiseControlStateListener {
         override fun onCruiseControlStateUpdated(state: CruiseControl?) {
+            Log.i(TAG, "cruise state from Vehicle SDK: $state")
             _signals.value = _signals.value.copy(cruise = Cruise.fromPleosName(state?.name), vehicleStatus = "Vehicle SDK 수신 중")
         }
         override fun onFailed(e: Exception) {

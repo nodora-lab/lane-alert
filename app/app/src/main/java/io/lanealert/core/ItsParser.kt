@@ -25,7 +25,10 @@ object ItsParser {
         val message = r["message"].orEmpty().trim()
         val lanesRaw = r["lanesBlocked"].orEmpty().trim()
 
-        val head = PAREN.find(message)?.groupValues?.get(1).orEmpty()
+        // 괄호가 여럿이면("송추(50K)-노고산터널(56K)(3,4차로)") 차로·갓길·진입로를 말하는 괄호를 쓴다
+        val parens = PAREN.findAll(message).map { it.groupValues[1] }.toList()
+        val head = parens.firstOrNull { p -> listOf("차로", "갓길", "진입로", "진출로").any { it in p } }
+            ?: parens.firstOrNull().orEmpty()
         val msgLanes = lanesIn(head)
         val fieldLanes = lanesIn(lanesRaw)
 
@@ -74,10 +77,20 @@ object ItsParser {
         )
     }
 
-    /** "(2,3,4,5차로)" -> [2,3,4,5], "3차로,갓길" -> [3], "화물차로" -> [] */
-    fun lanesIn(s: String): List<Int> =
-        LANE_LIST.findAll(s).flatMap { m -> m.groupValues[1].split(",").mapNotNull { it.trim().toIntOrNull() } }
-            .filter { it in 1..12 }.distinct().sorted().toList()
+    private val LANE_RANGE = Regex("(\\d+)\\s*[~\\-]\\s*(\\d+)\\s*차로")
+
+    /** "(2,3,4,5차로)" -> [2,3,4,5], "2~4차로" -> [2,3,4], "3차로,갓길" -> [3], "화물차로" -> [] */
+    fun lanesIn(s: String): List<Int> {
+        val out = mutableListOf<Int>()
+        var rest = s
+        LANE_RANGE.findAll(s).forEach { m ->
+            val a = m.groupValues[1].toInt(); val b = m.groupValues[2].toInt()
+            if (a in 1..12 && b in a..12) out += (a..b)
+            rest = rest.replace(m.value, " ")
+        }
+        LANE_LIST.findAll(rest).forEach { m -> out += m.groupValues[1].split(",").mapNotNull { it.trim().toIntOrNull() } }
+        return out.filter { it in 1..12 }.distinct().sorted()
+    }
 
     fun ts(s: String?): LocalDateTime? {
         val t = s?.trim().orEmpty()

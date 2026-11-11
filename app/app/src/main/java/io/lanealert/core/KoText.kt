@@ -5,12 +5,12 @@ import kotlin.math.roundToInt
 /** 음성·화면 문장에 쓰는 한국어 표기 도우미 (speak/announce.py 의 km_text·topic·lane_text 이식). */
 object KoText {
 
-    /** 1km 이상은 0.5km 단위, 미만은 100m 단위. 1500 -> "1.5km", 3000 -> "3km", 800 -> "800m" */
+    /** 1km 이상은 0.1km 단위, 미만은 100m 단위. 1500 -> "1.5km", 3000 -> "3km", 3333 -> "3.3km", 800 -> "800m"
+     *  (파이썬 판은 0.5km 단위였으나 3.33km 를 "3.5km"로 말해 실제보다 멀게 들려 0.1km 로 바꿈) */
     fun km(m: Double): String {
         if (m >= 1000) {
-            val v = (m / 500).roundToInt() * 0.5
-            val s = if (v % 1.0 == 0.0) v.toInt().toString() else v.toString()
-            return s + "km"
+            val tenths = (m / 100).roundToInt()
+            return if (tenths % 10 == 0) "${tenths / 10}km" else "${tenths / 10}.${tenths % 10}km"
         }
         return "${((m / 100).roundToInt() * 100)}m"
     }

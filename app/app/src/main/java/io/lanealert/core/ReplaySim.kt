@@ -30,11 +30,17 @@ class ReplaySim(val scenario: Scenario) {
     /** 정체 꼬리까지 남은 거리 */
     fun congestionOffsetM(): Double? = scenario.congestionBeforeM?.let { distanceM - it }
 
+    /** 차량 신호 사용 시 실제 차속(m/s). 있으면 가상 속도 대신 이 값으로 거리를 줄인다 */
+    var carSpeedMps: Double? = null
+
     fun step(dt: Double) {
         if (finished) return
         tS += dt
         val tail = congestionOffsetM()
-        if (tail != null && tail <= 150.0 && scenario.congestionAvgKmh != null) {
+        val car = carSpeedMps
+        if (car != null) {
+            speedMps = car.coerceAtLeast(0.0)
+        } else if (tail != null && tail <= 150.0 && scenario.congestionAvgKmh != null) {
             // 정체 꼬리에서 운전자가 브레이크를 밟는다고 가정 → 크루즈는 대기로 바뀐다
             val target = scenario.congestionAvgKmh / 3.6
             speedMps = maxOf(target, speedMps - 2.5 * dt)

@@ -4,19 +4,27 @@ package io.lanealert.core
  * "앞에 왜 막혀? 몇 차로야?" 에 확인된 사실로만 1-2문장으로 답한다.
  * 질문 이해는 규칙(낱말)으로 한다. 사실·숫자·차로는 공공 기록과 차량 신호에서만 가져온다.
  * 답하지 않는 것: 어느 차로가 빠른지, 어느 차로로 가야 하는지, 크루즈를 믿어도 되는지.
+ * 기록에 없는 상태("처리 중", "해제됨")를 사건 종류로 짐작해 말하지 않는다. 기록 문구를 그대로 옮긴다.
  */
 object QaEngine {
 
     enum class Intent { WHY, LANES, DISTANCE, WHEN_CLEAR, FASTEST_LANE, CRUISE, TRUST, UNKNOWN }
 
+    /** 사건이 내 경로 앞이라고 확인됐는지 */
+    enum class Relation { AHEAD, NEARBY }
+
     data class Context(
         val incident: Incident?,
         val distanceM: Double?,
-        /** 공공 기록을 받은 지 몇 분 됐는지 */
-        val observedMinutesAgo: Int?,
+        /** 근거 표시: 예) "공공 돌발정보 11-12 00:42 기록(재생)" */
+        val recordLabel: String,
         val cruise: Cruise,
         val cruiseTargetKmh: Double?,
-        val speedLimitKmh: Int?,
+        /** 크루즈 값 출처: "재생" 또는 "Pleos Vehicle SDK" */
+        val cruiseSource: String = "재생",
+        val relation: Relation = Relation.AHEAD,
+        /** 받은 지 오래된 기록이면 false → 통제 차로를 지금 사실처럼 말하지 않는다 */
+        val recordFresh: Boolean = true,
     )
 
     data class Answer(val intent: Intent, val text: String, val basis: String)
@@ -38,17 +46,19 @@ object QaEngine {
         }
     }
 
-    private fun basis(ctx: Context): String {
-        val ago = ctx.observedMinutesAgo
-        return if (ago == null) "근거: 공공 돌발정보" else "근거: 공공 돌발정보, ${ago}분 전 받음"
+    private fun where(ctx: Context): String = when (ctx.relation) {
+        Relation.AHEAD -> ctx.distanceM?.let { "${KoText.km(it)} 앞" } ?: "앞"
+        Relation.NEARBY -> "주변 기록상"
     }
 
-    private fun where(ctx: Context): String = ctx.distanceM?.let { "${KoText.km(it)} 앞" } ?: "앞"
+    private fun lanesFact(inc: Incident): String? =
+        if (inc.hasMainlineLanes) "${KoText.lanes(inc.lanes)} 통제" else null
 
     fun answer(question: String, ctx: Context): Answer = answer(classify(question), ctx)
 
     fun answer(intent: Intent, ctx: Context): Answer {
         val inc = ctx.incident
+        val nearbyTail = if (ctx.relation == Relation.NEARBY) " 내 경로 앞인지는 확인 전이에요." else ""
         val text: String = when (intent) {
             Intent.TRUST -> "그 질문엔 답하지 않아요. 제가 알려 드리는 건 앞 사건과 통제 차로예요."
             Intent.CRUISE -> when (ctx.cruise) {
@@ -57,14 +67,18 @@ object QaEngine {
                 Cruise.OFF -> "크루즈는 꺼져 있어요."
                 else -> "크루즈 상태는 지금 ${ctx.cruise.ko}이에요."
             }
-            else -> if (inc == null) "지금 경로 앞에 확인된 돌발 기록은 없어요." else when (intent) {
-                Intent.LANES -> laneAnswer(inc, ctx)
-                Intent.WHY -> whyAnswer(inc, ctx)
-                Intent.DISTANCE -> ctx.distanceM?.let { "${inc.kindKo} 지점까지 ${KoText.km(it)} 남았어요." }
-                    ?: "사건 지점까지 거리는 지금 알 수 없어요."
+            else -> if (inc == null) "지금 확인된 돌발 기록은 없어요." else when (intent) {
+                Intent.LANES ->
+                    if (!ctx.recordFresh) "받은 지 오래된 기록이라 지금도 통제 중인지는 확인이 필요해요."
+                    else laneAnswer(inc, ctx) + nearbyTail
+                Intent.WHY -> whyAnswer(inc, ctx) + nearbyTail
+                Intent.DISTANCE -> when {
+                    ctx.relation == Relation.NEARBY -> "내 경로 위 거리는 아직 확인 전이에요."
+                    ctx.distanceM != null -> "${inc.kindKo} 지점까지 ${KoText.km(ctx.distanceM)} 남았어요."
+                    else -> "사건 지점까지 거리는 지금 알 수 없어요."
+                }
                 Intent.WHEN_CLEAR -> {
-                    val end = inc.endClock()
-                    val start = inc.startClock()
+                    val end = inc.endClock(); val start = inc.startClock()
                     when {
                         end != null -> "기록상 끝나는 시각은 ${end}이에요."
                         start != null -> "끝나는 시각은 기록에 없어요. 시작 시각은 ${start}이에요."
@@ -72,44 +86,45 @@ object QaEngine {
                     }
                 }
                 Intent.FASTEST_LANE -> "차로별 속도는 확인할 수 없어요. " + factLine(inc, ctx)
-                Intent.UNKNOWN -> "제가 답할 수 있는 건 앞 사건, 통제 차로, 남은 거리예요."
                 else -> "제가 답할 수 있는 건 앞 사건, 통제 차로, 남은 거리예요."
             }
         }
         check(KoText.isSafe(text)) { text }
-        val b = when (intent) {
-            Intent.CRUISE -> "근거: 차량 크루즈 신호"
+        val basis = when (intent) {
+            Intent.CRUISE -> "근거: 크루즈 신호(${ctx.cruiseSource})"
             Intent.TRUST, Intent.UNKNOWN -> ""
-            else -> if (inc == null) "" else basis(ctx)
+            else -> if (inc == null) "" else "근거: ${ctx.recordLabel}"
         }
-        return Answer(intent, text, b)
+        return Answer(intent, text, basis)
     }
 
-    /** "확인된 건 2km 앞 사고로 2차로가 통제됐다는 기록이에요." */
-    private fun factLine(inc: Incident, ctx: Context): String = when {
-        inc.hasMainlineLanes -> "확인된 건 ${where(ctx)} ${inc.kindKo}로 ${KoText.subject(KoText.lanes(inc.lanes)!!)} 통제됐다는 기록이에요."
-        else -> "확인된 건 ${where(ctx)} ${inc.kindKo} 기록이에요."
+    /** "확인된 건 2km 앞 고장차 기록, 4차로 통제예요." */
+    private fun factLine(inc: Incident, ctx: Context): String {
+        val lanes = lanesFact(inc)
+        return if (lanes != null) "확인된 건 ${where(ctx)} ${inc.kindKo} 기록, ${lanes}예요."
+        else "확인된 건 ${where(ctx)} ${inc.kindKo} 기록이에요."
     }
 
     private fun laneAnswer(inc: Incident, ctx: Context): String = when (inc.scope) {
         Incident.LaneScope.MAINLINE ->
-            if (inc.lanes.isEmpty()) "${where(ctx)} ${inc.kindKo}예요. 통제 차로는 기록에 없어요."
-            else "${where(ctx)} ${inc.kindKo}로 ${KoText.subject(KoText.lanes(inc.lanes)!!)} 통제됐어요."
-        Incident.LaneScope.RAMP_ENTRY -> "${where(ctx)} 진입로 공사예요. 본선 차로 통제 기록은 없어요."
-        Incident.LaneScope.RAMP_EXIT -> "${where(ctx)} 진출로 공사예요. 본선 차로 통제 기록은 없어요."
-        Incident.LaneScope.SHOULDER -> "${where(ctx)} 갓길이에요. 본선 차로 통제 기록은 없어요."
-        Incident.LaneScope.NONE -> "${where(ctx)} ${inc.kindKo}예요. 통제 차로는 기록에 없어요."
+            if (inc.lanes.isEmpty()) "${where(ctx)} ${inc.kindKo} 기록이에요. 통제 차로는 기록에 없어요."
+            else "${where(ctx)} ${inc.kindKo}, ${lanesFact(inc)}예요."
+        Incident.LaneScope.RAMP_ENTRY, Incident.LaneScope.RAMP_EXIT, Incident.LaneScope.SHOULDER ->
+            "${where(ctx)} ${inc.kindKo} 기록이에요. 본선 차로 통제 기록은 없어요."
+        Incident.LaneScope.NONE -> "${where(ctx)} ${inc.kindKo} 기록이에요. 통제 차로는 기록에 없어요."
     }
 
+    /** 기록 문구를 그대로 옮긴다: "2.5km 앞, 고장차 처리중이라는 기록이에요. 4차로 통제예요." */
     private fun whyAnswer(inc: Incident, ctx: Context): String {
-        val body = inc.messageBody.removeSuffix(".")
-        val first = when (inc.kind) {
-            Incident.Kind.BREAKDOWN -> "${where(ctx)}에서 고장차를 처리하고 있어요."
-            Incident.Kind.ACCIDENT -> "${where(ctx)}에서 사고를 처리하고 있어요."
-            Incident.Kind.WEATHER, Incident.Kind.DISASTER -> "${where(ctx)}에 ${KoText.subject(inc.kindKo)} 있어요."
-            else -> if (body.isNotBlank()) "${where(ctx)} ${body.trimEnd('중', ' ')} 중이에요." else "${where(ctx)} ${inc.kindKo}예요."
-        }
-        val second = if (inc.hasMainlineLanes) " ${KoText.subject(KoText.lanes(inc.lanes)!!)} 통제됐어요." else ""
-        return (first + second).replace("  ", " ")
+        val msg = inc.plainMessage
+        val first = if (msg.isNotBlank()) "${where(ctx)}, ${msg}${if (endsWithBatchim(msg)) "이라는" else "라는"} 기록이에요."
+        else "${where(ctx)} ${inc.kindKo} 기록이에요."
+        val lanes = lanesFact(inc)
+        return if (lanes != null) "$first ${lanes}예요." else first
+    }
+
+    private fun endsWithBatchim(s: String): Boolean {
+        val ch = s.lastOrNull() ?: return false
+        return ch in '가'..'힣' && (ch.code - 0xAC00) % 28 != 0
     }
 }

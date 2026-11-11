@@ -32,21 +32,30 @@ data class Incident(
     enum class LaneScope { MAINLINE, RAMP_ENTRY, RAMP_EXIT, SHOULDER, NONE }
 
     /** 짧은 이름: 음성 첫 문장에 씀 */
-    val kindKo: String
+    /** 사건 종류 이름 (범위와 따로) */
+    val baseKo: String
         get() = when (kind) {
             Kind.ACCIDENT -> "사고"
             Kind.BREAKDOWN -> "고장차"
-            Kind.OBSTACLE -> if (scope == LaneScope.SHOULDER) "갓길 장애물" else "장애물"
-            Kind.WORK -> when (scope) {
-                LaneScope.RAMP_ENTRY -> "진입로 공사"
-                LaneScope.RAMP_EXIT -> "진출로 공사"
-                LaneScope.SHOULDER -> "갓길 작업"
-                else -> "공사"
-            }
+            Kind.OBSTACLE -> "장애물"
+            Kind.WORK -> if (scope == LaneScope.SHOULDER) "작업" else "공사"
             Kind.WEATHER -> "${eventDetailType.ifBlank { "기상" }} 주의 구간"
             Kind.DISASTER -> "${eventDetailType.ifBlank { "재난" }} 주의 구간"
             Kind.OTHER -> "돌발 상황"
         }
+
+    /** 범위 + 종류: "진입로 공사", "진입로 고장차", "갓길 장애물", "사고" */
+    val kindKo: String
+        get() = when (scope) {
+            LaneScope.RAMP_ENTRY -> "진입로 $baseKo"
+            LaneScope.RAMP_EXIT -> "진출로 $baseKo"
+            LaneScope.SHOULDER -> "갓길 $baseKo"
+            else -> baseKo
+        }
+
+    /** 기록 문구 그대로 (따옴표만 정리). "(4차로) 고장차 처리중" -> "고장차 처리중" */
+    val plainMessage: String
+        get() = messageBody.replace("\"", "").replace(Regex("\\s+"), " ").trim()
 
     /** 메시지에서 괄호 머리말을 뗀 본문. "(4,5차로)노면 포장 작업 중" -> "노면 포장 작업 중" */
     val messageBody: String
