@@ -1,0 +1,19 @@
+# 비밀값·로컬 설정
+app/local.properties
+app/release.keystore
+*.keystore
+*.jks
+.its_key.txt
+
+# 빌드 산출물
+app/.gradle/
+app/build/
+app/app/build/
+app/.idea/
+*.iml
+.DS_Store
+
+# 내부 심사 기록(저장소 밖에 둠)
+GPT심사_기록.md
+_gpt/
+_work/

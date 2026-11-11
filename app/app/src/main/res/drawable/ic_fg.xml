@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 차로 3개, 가운데 차로 통제(주황) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#2A313B" android:pathData="M30,30h14v48h-14z" />
+    <path android:fillColor="#FFB020" android:pathData="M47,30h14v48h-14z" />
+    <path android:fillColor="#2A313B" android:pathData="M64,30h14v48h-14z" />
+    <path android:strokeColor="#111111" android:strokeWidth="3" android:pathData="M49,47l10,10M59,47l-10,10" />
+</vector>

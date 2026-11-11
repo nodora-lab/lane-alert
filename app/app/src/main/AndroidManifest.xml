@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 차량 앱 (AAOS). 일반 휴대폰에서도 설치해 재생 모드로 볼 수 있게 required=false -->
+    <uses-feature android:name="android.hardware.type.automotive" android:required="false" />
+
+    <!-- Pleos Vehicle SDK: 크루즈 상태·설정 속도 (DrivingMode 도메인) -->
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />
+    <!-- Pleos NaviHelper SDK: 경로 상태(정체·사건), 제한속도, 현재 위치 -->
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
+    <!-- Pleos TextToSpeech / SpeechToText SDK (ON_DEVICE) -->
+    <uses-permission android:name="pleos.car.permission.TTS_SERVICE" />
+    <uses-permission android:name="pleos.car.permission.STT_SERVICE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- AAOS 표준 차속 PERF_VEHICLE_SPEED -->
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
+    <!-- ITS 공공 돌발정보 (HTTPS) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:label="막힌 차로 알림"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|density|uiMode">
+            <!-- 주행 중 사용: 화면 정보 최소, 음성 우선 (Distraction Optimization 선언) -->
+            <meta-data android:name="distractionOptimized" android:value="true" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
