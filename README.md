@@ -3,7 +3,7 @@
 빨간 줄 대신, 앞 사건으로 몇 차로가 통제됐는지를 짧은 음성으로 알려 주고, 크루즈를 켠 채 다가가면 더 일찍 알려 주는 Pleos Connect 차량 앱입니다.
 
 - APK: `apk/LaneAlert_막힌차로알림_release.apk` (release 빌드)
-- 시연 영상: [`docs/demo.mp4`](docs/demo.mp4) (Pleos Connect 에뮬레이터 화면 녹화, 1920x1080, 약 2분. 화면 녹화라 소리는 없고, 말한 문장은 화면 카드에 같이 나옵니다)
+- 시연 영상: [`docs/demo.mp4`](docs/demo.mp4) (Pleos Connect 에뮬레이터 화면 녹화, 1920x1080, 약 2분. 한국어 설명 음성과 자막을 넣었습니다. 화면 녹화에는 앱 소리가 담기지 않아, 앱이 Pleos TTS로 말한 안내 문장은 설명 음성이 다시 읽고 자막에 "앱 안내:"로 표시합니다. 설명 음성은 합성음(edge-tts)이고, 만든 방법은 `tools/narrate_demo.py`)
 - 화면: `screens/` (에뮬레이터 실제 캡처 5장)
 
 ## 지금 되는 것 (v0.2.0)

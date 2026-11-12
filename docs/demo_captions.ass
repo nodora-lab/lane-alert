@@ -1,0 +1,40 @@
+﻿[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Cap,Noto Sans KR Medium,70,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2.6,2,2,50,50,54,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.50,0:00:03.33,Cap,,0,0,0,,{\blur0.8}Pleos Connect\N에뮬레이터 시연입니다
+Dialogue: 0,0:00:03.72,0:00:08.60,Cap,,0,0,0,,{\blur0.8}실제 ITS 돌발 기록을 재생하고\N거리와 정체 위치만 가상이에요
+Dialogue: 0,0:00:08.66,0:00:12.47,Cap,,0,0,0,,{\blur0.8}크루즈 상태와 속도는\NPleos 차량 SDK로 받아요
+Dialogue: 0,0:00:12.54,0:00:16.10,Cap,,0,0,0,,{\blur0.8}앱이 Pleos TTS로 말한\N안내 문장을 다시 읽어요
+Dialogue: 0,0:00:16.51,0:00:20.97,Cap,,0,0,0,,{\blur0.8}앱 안내:\N3.3km 앞 고장차. 4차로 통제
+Dialogue: 0,0:00:21.04,0:00:26.06,Cap,,0,0,0,,{\blur0.8}앱 안내:\N1.2km 앞부터 정체가 시작돼요
+Dialogue: 0,0:00:26.47,0:00:28.20,Cap,,0,0,0,,{\blur0.8}앱 안내: 크루즈가 켜져 있어요
+Dialogue: 0,0:00:32.10,0:00:34.85,Cap,,0,0,0,,{\blur0.8}통제 차로는 ITS 기록을 따라요
+Dialogue: 0,0:00:35.24,0:00:40.71,Cap,,0,0,0,,{\blur0.8}앱 안내:\N1.2km 앞 고장차, 4차로 통제예요
+Dialogue: 0,0:00:40.77,0:00:43.34,Cap,,0,0,0,,{\blur0.8}어느 차로가\N빠른지는 답하지 않아요
+Dialogue: 0,0:00:43.74,0:00:48.09,Cap,,0,0,0,,{\blur0.8}앱 안내:\N차로별 속도는 확인할 수 없어요
+Dialogue: 0,0:00:49.10,0:00:53.05,Cap,,0,0,0,,{\blur0.8}이번엔 같은 사건을\N크루즈만 대기로 바꿔 다시 달려요
+Dialogue: 0,0:00:53.44,0:00:56.36,Cap,,0,0,0,,{\blur0.8}속도는 똑같이 시속 100km예요
+Dialogue: 0,0:01:00.10,0:01:03.44,Cap,,0,0,0,,{\blur0.8}크루즈가 대기라서\N도착 60초 전에 말해요
+Dialogue: 0,0:01:03.84,0:01:07.04,Cap,,0,0,0,,{\blur0.8}이 속도면 1.7km 앞이에요
+Dialogue: 0,0:01:07.60,0:01:12.08,Cap,,0,0,0,,{\blur0.8}말하는 지점 막대도\N1.7km 쪽으로 옮겨 갔어요
+Dialogue: 0,0:01:17.40,0:01:23.71,Cap,,0,0,0,,{\blur0.8}앱 안내:\N1.7km 앞 고장차. 4차로 통제
+Dialogue: 0,0:01:23.78,0:01:26.40,Cap,,0,0,0,,{\blur0.8}크루즈 작동 중엔 3.3km
+Dialogue: 0,0:01:26.47,0:01:29.89,Cap,,0,0,0,,{\blur0.8}대기일 땐 1.7km에서 시작했어요
+Dialogue: 0,0:01:29.96,0:01:31.95,Cap,,0,0,0,,{\blur0.8}진입로 공사 기록이에요
+Dialogue: 0,0:01:32.34,0:01:36.12,Cap,,0,0,0,,{\blur0.8}앱 안내:\N3.3km 앞 진입로 공사
+Dialogue: 0,0:01:36.18,0:01:38.20,Cap,,0,0,0,,{\blur0.8}본선 차로 통제 기록은 없어요
+Dialogue: 0,0:01:38.27,0:01:43.44,Cap,,0,0,0,,{\blur0.8}진입로나 갓길 기록은\N본선이 막혔다고 하지 않아요
+Dialogue: 0,0:01:44.30,0:01:50.20,Cap,,0,0,0,,{\blur0.8}앱 안내:\N3km 앞 공사. 4, 5차로 통제
+Dialogue: 0,0:01:50.61,0:01:56.17,Cap,,0,0,0,,{\blur0.8}ITS 차로 칸엔 5차로만 있지만\N기록 문구의 4, 5차로를 따라요
+Dialogue: 0,0:01:56.24,0:02:01.25,Cap,,0,0,0,,{\blur0.8}앱 안내:\N1.2km 앞부터 정체가 시작돼요
+Dialogue: 0,0:02:01.66,0:02:03.39,Cap,,0,0,0,,{\blur0.8}앱 안내: 크루즈가 켜져 있어요
